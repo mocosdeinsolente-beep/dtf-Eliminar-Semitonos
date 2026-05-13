@@ -4,103 +4,89 @@ import io
 
 st.set_page_config(page_title="DTF Alpha Cleaner Pro", layout="wide")
 
-# Estilo para que SOLO el contenedor del resultado tenga fondo negro
+# Estilo para el fondo negro del resultado (muy simple para evitar errores)
 st.markdown("""
     <style>
-    .black-bg {
+    .black-box {
         background-color: #000000;
-        padding: 10px;
-        border-radius: 10px;
+        padding: 15px;
+        border-radius: 8px;
         border: 1px solid #444;
         text-align: center;
     }
-    .stButton>button { width: 100%; }
-    .stDownloadButton>button { width: 100%; background-color: #28a745; color: white; }
     </style>
     """, unsafe_allow_html=True)
 
+if 'key' not in st.session_state:
+    st.session_state.key = 0
+
 def restart():
-    if 'file' in st.session_state:
-        del st.session_state.file
+    st.session_state.key += 1
     st.rerun()
 
-st.title("🧼 Limpiador de Semitonos DTF")
+st.title("🧼 DTF Alpha Cleaner Pro")
+st.write("Limpia bordes suaves de IA para una impresión DTF perfecta.")
 
-if 'file' not in st.session_state:
-    uploaded = st.file_uploader("Sube tu archivo PNG con transparencia", type=["png"])
-    if uploaded:
-        st.session_state.file = uploaded
-        st.rerun()
-else:
+uploaded_file = st.file_uploader("Sube tu diseño (PNG con transparencia)", type=["png"], key=f"uploader_{st.session_state.key}")
+
+if uploaded_file is not None:
     with st.sidebar:
-        st.header("⚙️ Configuración")
-        threshold = st.slider("Umbral de Limpieza (Alpha)", 0, 255, 128, 
-                             help="Lo que esté por debajo de este valor se marcará en ROJO y se eliminará.")
-        
-        st.divider()
-        st.header("🔍 Visualización")
-        zoom = st.slider("Zoom (Enfoque Central)", 1, 10, 1)
+        st.header("⚙️ Ajustes")
+        threshold = st.slider("Umbral de limpieza", 0, 255, 128, 
+                             help="Lo que esté por debajo de este valor se marcará en ROJO y se borrará.")
         
         st.divider()
         if st.button("🔄 Cargar otra imagen"):
             restart()
 
-    img = Image.open(st.session_state.file).convert("RGBA")
+    img = Image.open(uploaded_file).convert("RGBA")
     
+    # Usamos list() para ser compatibles con versiones viejas y nuevas de Pillow
     pixels = list(img.getdata())
-    preview_pixels = [] # Esta tendrá los puntos rojos
-    final_pixels = []   # Esta será la limpia para descargar
+    preview_pixels = [] # Con marcas rojas
+    clean_pixels = []   # Para la descarga real
     
     for p in pixels:
         r, g, b, a = p
         if 0 < a < threshold:
             preview_pixels.append((255, 0, 0, 255)) # Rojo para el visor
-            final_pixels.append((0, 0, 0, 0))       # Transparente para descargar
+            clean_pixels.append((0, 0, 0, 0))       # Transparente para descargar
         elif a == 0:
             preview_pixels.append((0, 0, 0, 0))
-            final_pixels.append((0, 0, 0, 0))
+            clean_pixels.append((0, 0, 0, 0))
         else:
-            preview_pixels.append((r, g, b, 255))   # Sólido
-            final_pixels.append((r, g, b, 255))
+            # Si es sólido, lo dejamos sólido (255)
+            preview_pixels.append((r, g, b, 255))   
+            clean_pixels.append((r, g, b, 255))
 
     img_preview = Image.new("RGBA", img.size)
     img_preview.putdata(preview_pixels)
     
-    img_final = Image.new("RGBA", img.size)
-    img_final.putdata(final_pixels)
-
-    if zoom > 1:
-        w, h = img.size
-        left = (w - w/zoom)/2
-        top = (h - h/zoom)/2
-        right = (w + w/zoom)/2
-        bottom = (h + h/zoom)/2
-        img_display_orig = img.crop((left, top, right, bottom))
-        img_display_preview = img_preview.crop((left, top, right, bottom))
-    else:
-        img_display_orig = img
-        img_display_preview = img_preview
+    img_clean = Image.new("RGBA", img.size)
+    img_clean.putdata(clean_pixels)
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("1. ORIGINAL")
-        st.image(img_display_orig, width='stretch')
+        st.subheader("🖼️ 1. ORIGINAL")
+        # Usamos width='stretch' que es lo que pedían tus logs
+        st.image(img, width='stretch')
 
     with col2:
-        st.subheader("2. RESULTADO (Fondo Negro)")
-        st.markdown('<div class="black-bg">', unsafe_allow_html=True)
-        st.image(img_display_preview, width='stretch')
+        st.subheader("🔍 2. RESULTADO (FONDO NEGRO)")
+        # Envolvemos el resultado en el div negro
+        st.markdown('<div class="black-box">', unsafe_allow_html=True)
+        st.image(img_preview, width='stretch')
         st.markdown('</div>', unsafe_allow_html=True)
-        st.info("Píxeles rojos = Semitransparencias que serán eliminadas")
+        st.caption("Píxeles ROJOS = Semitransparencias que serán eliminadas.")
 
     st.divider()
-    dl_buffer = io.BytesIO()
-    img_final.save(dl_buffer, format="PNG")
+    buf = io.BytesIO()
+    img_clean.save(buf, format="PNG")
     
     st.download_button(
-        label="💾 DESCARGAR PNG LIMPIO (SIN ROJO)",
-        data=dl_buffer.getvalue(),
+        label="💾 DESCARGAR PNG LIMPIO (Sin bordes rojos)",
+        data=buf.getvalue(),
         file_name="dtf_limpio.png",
         mime="image/png"
     )
