@@ -2,7 +2,6 @@ import streamlit as st
 from PIL import Image
 import io
 
-# Configuración de la página
 st.set_page_config(page_title="Limpiador DTF Pro", layout="wide")
 
 st.markdown("""
@@ -20,9 +19,9 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Función para reiniciar la app
 def restart():
-    st.session_state.clear()
+    if 'file' in st.session_state:
+        del st.session_state.file
     st.rerun()
 
 st.title("🧼 Limpiador de Semitonos DTF")
@@ -33,7 +32,6 @@ if 'file' not in st.session_state:
         st.session_state.file = uploaded
         st.rerun()
 else:
-    # Barra lateral de controles
     with st.sidebar:
         st.header("⚙️ Configuración")
         threshold = st.slider("Umbral de Limpieza (Alpha)", 0, 255, 128, 
@@ -41,7 +39,7 @@ else:
         
         st.divider()
         st.header("🔍 Visualización")
-        zoom = st.slider("Zoom (Recorte Central)", 1, 10, 1)
+        zoom = st.slider("Zoom (Enfoque Central)", 1, 10, 1)
         
         st.divider()
         if st.button("🔄 Cargar otra imagen"):
@@ -49,7 +47,6 @@ else:
 
     img = Image.open(st.session_state.file).convert("RGBA")
     
-    # Lógica de limpieza y marcado rojo
     pixels = list(img.getdata())
     preview_pixels = []
     final_pixels = []
@@ -74,7 +71,6 @@ else:
 
     if zoom > 1:
         w, h = img.size
-        # Calculamos el cuadro central para el zoom
         left = (w - w/zoom)/2
         top = (h - h/zoom)/2
         right = (w + w/zoom)/2
@@ -89,15 +85,14 @@ else:
 
     with col1:
         st.subheader("1. ORIGINAL")
-        st.image(img_display_orig, use_container_width=True)
+        st.image(img_display_orig, width='stretch')
 
     with col2:
         st.subheader("2. RESULTADO (Fondo Negro)")
-        # Envolvemos la imagen en un div con clase 'black-bg'
         st.markdown('<div class="black-bg">', unsafe_allow_html=True)
-        st.image(img_display_preview, use_container_width=True)
+        st.image(img_display_preview, width='stretch')
         st.markdown('</div>', unsafe_allow_html=True)
-        st.info("Píxeles rojos = Semitransparencias eliminadas")
+        st.info("Píxeles rojos = Semitransparencias que serán eliminadas")
 
     st.divider()
     dl_buffer = io.BytesIO()
