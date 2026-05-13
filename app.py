@@ -3,9 +3,9 @@ from PIL import Image
 import io
 import base64
 
+# Configuración inicial
 st.set_page_config(page_title="DTF Alpha Cleaner Pro", layout="wide")
 
-# Estilo para que solo el contenedor del resultado sea negro
 st.markdown("""
     <style>
     .stApp { background-color: transparent; }
@@ -39,7 +39,7 @@ else:
     with st.sidebar:
         st.header("⚙️ Ajustes")
         threshold = st.slider("Umbral de Limpieza (Alpha)", 0, 255, 128, 
-                             help="Píxeles rojos = se eliminan en la descarga. Píxeles sólidos = se quedan.")
+                             help="Píxeles rojos = se eliminan. Píxeles sólidos = se quedan.")
         
         st.divider()
         st.header("🔍 Navegación")
@@ -78,16 +78,15 @@ else:
     with col1:
         st.subheader("1. ORIGINAL")
         st.image(img_orig, use_container_width=True)
-        st.caption("Imagen original con transparencias suaves.")
 
     with col2:
-        st.subheader("2. RESULTADO FINAL (Pre-visualización)")
+        st.subheader("2. RESULTADO (Cuadro Negro)")
         
-        # Convertir imagen a base64 para el visor interactivo
         buffered = io.BytesIO()
         img_preview.save(buffered, format="PNG")
         img_base64 = base64.b64encode(buffered.getvalue()).decode()
         
+        # Nota: Usamos doble llave {{ }} para que Python no se confunda con el código JS
         st.markdown(f"""
             <div id="view-wrapper" class="result-container">
                 <div id="view-content" style="
@@ -110,7 +109,6 @@ else:
 
             <script>
                 const wrapper = document.getElementById('view-wrapper');
-                const content = document.getElementById('view-content');
                 let isDragging = false;
                 let startX, startY, scrollLeft, scrollTop;
 
