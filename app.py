@@ -70,13 +70,13 @@ if uploaded_file is not None:
     with col1:
         st.subheader("🖼️ 1. ORIGINAL")
         # Usamos width='stretch' que es lo que pedían tus logs
-        st.image(img, width='stretch')
+        st.image(img, use_container_width=True)
 
     with col2:
         st.subheader("🔍 2. RESULTADO (FONDO NEGRO)")
         # Envolvemos el resultado en el div negro
         st.markdown('<div class="black-box">', unsafe_allow_html=True)
-        st.image(img_preview, width='stretch')
+        st.image(img, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
         st.caption("Píxeles ROJOS = Semitransparencias que serán eliminadas.")
 
