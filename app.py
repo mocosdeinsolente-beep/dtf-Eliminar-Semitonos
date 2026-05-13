@@ -2,105 +2,52 @@ import streamlit as st
 from PIL import Image
 import io
 
-st.set_page_config(page_title="Limpiador DTF Pro", layout="wide")
+st.set_page_config(page_title="DTF Alpha Cleaner", layout="centered")
 
-st.markdown("""
-    <style>
-    /* Fondo negro solo para el área de la imagen de resultado */
-    .black-bg {
-        background-color: #000000;
-        padding: 10px;
-        border-radius: 10px;
-        border: 1px solid #444;
-        text-align: center;
-    }
-    .stButton>button { width: 100%; }
-    .stDownloadButton>button { width: 100%; background-color: #28a745; color: white; }
-    </style>
-    """, unsafe_allow_html=True)
+st.title("🧼 DTF Alpha Cleaner")
+st.write("Elimina semitransparencias y bordes suaves de imágenes generadas por IA.")
 
-def restart():
-    if 'file' in st.session_state:
-        del st.session_state.file
-    st.rerun()
+# Subida de archivo
+uploaded_file = st.file_uploader("Sube tu diseño (PNG con transparencia)", type=["png"])
 
-st.title("🧼 Limpiador de Semitonos DTF")
-
-if 'file' not in st.session_state:
-    uploaded = st.file_uploader("Sube tu archivo PNG con transparencia", type=["png"])
-    if uploaded:
-        st.session_state.file = uploaded
-        st.rerun()
-else:
-    with st.sidebar:
-        st.header("⚙️ Configuración")
-        threshold = st.slider("Umbral de Limpieza (Alpha)", 0, 255, 128, 
-                             help="Lo que esté por debajo de este valor se marcará en ROJO y se eliminará.")
-        
-        st.divider()
-        st.header("🔍 Visualización")
-        zoom = st.slider("Zoom (Enfoque Central)", 1, 10, 1)
-        
-        st.divider()
-        if st.button("🔄 Cargar otra imagen"):
-            restart()
-
-    img = Image.open(st.session_state.file).convert("RGBA")
+if uploaded_file is not None:
+    # Cargar imagen
+    img = Image.open(uploaded_file).convert("RGBA")
     
-    pixels = list(img.getdata())
-    preview_pixels = []
-    final_pixels = []
-    
-    for p in pixels:
-        r, g, b, a = p
-        if 0 < a < threshold:
-            preview_pixels.append((255, 0, 0, 255)) # Rojo para el visor
-            final_pixels.append((0, 0, 0, 0))       # Transparente para descargar
-        elif a == 0:
-            preview_pixels.append((0, 0, 0, 0))
-            final_pixels.append((0, 0, 0, 0))
-        else:
-            preview_pixels.append((r, g, b, 255))   # Sólido
-            final_pixels.append((r, g, b, 255))
-
-    img_preview = Image.new("RGBA", img.size)
-    img_preview.putdata(preview_pixels)
-    
-    img_final = Image.new("RGBA", img.size)
-    img_final.putdata(final_pixels)
-
-    if zoom > 1:
-        w, h = img.size
-        left = (w - w/zoom)/2
-        top = (h - h/zoom)/2
-        right = (w + w/zoom)/2
-        bottom = (h + h/zoom)/2
-        img_display_orig = img.crop((left, top, right, bottom))
-        img_display_preview = img_preview.crop((left, top, right, bottom))
-    else:
-        img_display_orig = img
-        img_display_preview = img_preview
-
     col1, col2 = st.columns(2)
-
+    
     with col1:
-        st.subheader("1. ORIGINAL")
-        st.image(img_display_orig, width='stretch')
+        st.image(img, caption="Imagen Original", use_container_width=True)
+
+    # Configuración del umbral
+    # 128 es el punto medio (50% de opacidad)
+    threshold = st.slider("Umbral de opacidad (Threshold)", 0, 255, 128, 
+                          help="Píxeles con opacidad menor a este valor serán eliminados. Los mayores serán 100% sólidos.")
+
+    # Procesamiento
+    data = img.getdata()
+    new_data = []
+    
+    for item in data:
+        # item[3] es el canal alfa
+        if item[3] < threshold:
+            new_data.append((0, 0, 0, 0)) # Transparente total
+        else:
+            new_data.append((item[0], item[1], item[2], 255)) # Opaco total
+
+    img.putdata(new_data)
 
     with col2:
-        st.subheader("2. RESULTADO (Fondo Negro)")
-        st.markdown('<div class="black-bg">', unsafe_allow_html=True)
-        st.image(img_display_preview, width='stretch')
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.info("Píxeles rojos = Semitransparencias que serán eliminadas")
+        st.image(img, caption="Resultado para DTF", use_container_width=True)
 
-    st.divider()
-    dl_buffer = io.BytesIO()
-    img_final.save(dl_buffer, format="PNG")
-    
+    # Botón de descarga
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    byte_im = buf.getvalue()
+
     st.download_button(
-        label="💾 DESCARGAR PNG LIMPIO (SIN ROJO)",
-        data=dl_buffer.getvalue(),
-        file_name="dtf_limpio.png",
+        label="Descargar PNG limpio",
+        data=byte_im,
+        file_name="diseno_limpio_dtf.png",
         mime="image/png"
     )
