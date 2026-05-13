@@ -67,18 +67,26 @@ if uploaded_file is not None:
 
     col1, col2 = st.columns(2)
 
-    with col1:
-        st.subheader("🖼️ 1. ORIGINAL")
-        # Usamos width='stretch' que es lo que pedían tus logs
-        st.image(img, use_container_width=True)
+    col1, col2 = st.columns(2)
 
-    with col2:
-        st.subheader("🔍 2. RESULTADO (FONDO NEGRO)")
-        # Envolvemos el resultado en el div negro
-        st.markdown('<div class="black-box">', unsafe_allow_html=True)
-        st.image(img, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.caption("Píxeles ROJOS = Semitransparencias que serán eliminadas.")
+with col1:
+    st.subheader("🖼️ 1. ORIGINAL")
+    st.image(img, use_container_width=True)
+
+with col2:
+    st.subheader("🔍 2. RESULTADO (FONDO NEGRO)")
+    # ✅ CORREGIDO: Ahora muestra la imagen PROCESADA con bordes rojos
+    st.markdown('<div class="black-box">', unsafe_allow_html=True)
+    st.image(img_preview, use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+    .black-box img {
+        background-color: #000000 !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+    st.caption("Píxeles ROJOS = Semitransparencias que serán eliminadas.")
 
     st.divider()
     buf = io.BytesIO()
