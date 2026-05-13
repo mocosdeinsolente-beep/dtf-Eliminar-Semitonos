@@ -5,14 +5,21 @@ import base64
 
 st.set_page_config(page_title="DTF Alpha Cleaner Pro", layout="wide")
 
+# Estilo para que solo el contenedor del resultado sea negro
 st.markdown("""
     <style>
-    .main { background-color: #000000; color: #ffffff; }
-    header, [data-testid="stHeader"] { background-color: #000000 !important; }
-    .stApp { background-color: #111; }
-    section[data-testid="stSidebar"] { background-color: #1a1a1a !important; }
-    h1, h2, h3, p { color: #eee !important; }
-    .stSlider label { color: #fff !important; }
+    .stApp { background-color: transparent; }
+    .result-container {
+        background-color: #000000;
+        border: 2px solid #444;
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+        height: 500px;
+        width: 100%;
+        cursor: grab;
+    }
+    .result-container:active { cursor: grabbing; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -32,11 +39,11 @@ else:
     with st.sidebar:
         st.header("⚙️ Ajustes")
         threshold = st.slider("Umbral de Limpieza (Alpha)", 0, 255, 128, 
-                             help="Píxeles rojos = se eliminan. Píxeles sólidos = se imprimen.")
+                             help="Píxeles rojos = se eliminan en la descarga. Píxeles sólidos = se quedan.")
         
         st.divider()
-        st.header("🔍 Visualización")
-        zoom_level = st.slider("Nivel de Zoom", 1.0, 8.0, 2.0, 0.5)
+        st.header("🔍 Navegación")
+        zoom_level = st.slider("Nivel de Zoom", 1.0, 10.0, 1.0, 0.5)
         
         st.divider()
         if st.button("🔄 Nueva Imagen"):
@@ -44,7 +51,6 @@ else:
 
     img_orig = Image.open(st.session_state.uploaded_file).convert("RGBA")
     
-    # Generamos la versión de inspección (Rojo para semitonos)
     data = img_orig.getdata()
     preview_data = []
     clean_data = []
@@ -72,82 +78,70 @@ else:
     with col1:
         st.subheader("1. ORIGINAL")
         st.image(img_orig, use_container_width=True)
-        st.caption("Imagen tal cual se subió.")
+        st.caption("Imagen original con transparencias suaves.")
 
     with col2:
         st.subheader("2. RESULTADO FINAL (Pre-visualización)")
         
-        # Convertir a base64 para el componente interactivo
+        # Convertir imagen a base64 para el visor interactivo
         buffered = io.BytesIO()
         img_preview.save(buffered, format="PNG")
         img_base64 = base64.b64encode(buffered.getvalue()).decode()
         
-        # Esto permite el click-and-drag (pan) y el zoom centrado
         st.markdown(f"""
-            <div id="wrapper" style="
-                width: 100%; 
-                height: 500px; 
-                background: #000; 
-                border: 2px solid #444; 
-                overflow: hidden; 
-                position: relative; 
-                cursor: grab;
-                border-radius: 10px;
-            ">
-                <div id="container" style="
+            <div id="view-wrapper" class="result-container">
+                <div id="view-content" style="
                     width: 100%; 
                     height: 100%; 
                     display: flex; 
                     align-items: center; 
                     justify-content: center;
-                    transition: transform 0.1s;
                 ">
                     <img src="data:image/png;base64,{img_base64}" id="zoom-img" style="
                         transform: scale({zoom_level});
                         max-width: 100%;
                         height: auto;
                         user-select: none;
-                        -webkit-user-drag: none;
+                        pointer-events: none;
+                        transition: transform 0.1s ease-out;
                     " />
                 </div>
             </div>
 
             <script>
-                const wrapper = document.getElementById('wrapper');
-                const container = document.getElementById('container');
+                const wrapper = document.getElementById('view-wrapper');
+                const content = document.getElementById('view-content');
                 let isDragging = false;
                 let startX, startY, scrollLeft, scrollTop;
 
                 wrapper.addEventListener('mousedown', (e) => {{
                     isDragging = true;
-                    wrapper.style.cursor = 'grabbing';
                     startX = e.pageX - wrapper.offsetLeft;
                     startY = e.pageY - wrapper.offsetTop;
                     scrollLeft = wrapper.scrollLeft;
                     scrollTop = wrapper.scrollTop;
                 }});
 
-                wrapper.addEventListener('mouseleave', () => {{ isDragging = false; wrapper.style.cursor = 'grab'; }});
-                wrapper.addEventListener('mouseup', () => {{ isDragging = false; wrapper.style.cursor = 'grab'; }});
+                wrapper.addEventListener('mouseleave', () => {{ isDragging = false; }});
+                wrapper.addEventListener('mouseup', () => {{ isDragging = false; }});
 
                 wrapper.addEventListener('mousemove', (e) => {{
                     if (!isDragging) return;
                     e.preventDefault();
                     const x = e.pageX - wrapper.offsetLeft;
                     const y = e.pageY - wrapper.offsetTop;
-                    const walkX = (x - startX); 
+                    const walkX = (x - startX);
                     const walkY = (y - startY);
                     wrapper.scrollLeft = scrollLeft - walkX;
                     wrapper.scrollTop = scrollTop - walkY;
-                    container.style.transform = `translate(${{walkX}}px, ${{walkY}}px)`;
                 }});
             </script>
             <style>
-                #wrapper::-webkit-scrollbar {{ display: none; }}
-                #wrapper {{ -ms-overflow-style: none; scrollbar-width: none; }}
+                #view-wrapper::-webkit-scrollbar {{ display: none; }}
+                #view-wrapper {{ -ms-overflow-style: none; scrollbar-width: none; overflow: auto; }}
             </style>
         """, unsafe_allow_html=True)
-        st.info("💡 Haz clic y arrastra sobre la imagen negra para navegar por los detalles.")
+        st.info("💡 Arrastra con el mouse dentro del cuadro negro para moverte cuando haya Zoom.")
 
     st.divider()
     buf_dl = io.BytesIO()
